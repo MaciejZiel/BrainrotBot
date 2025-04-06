@@ -36,51 +36,22 @@ GYATPOKALIPSA_SONG = os.path.join(SONGS_FOLDER, "Gyatpokalipsa.mp3")
 ODA_DO_GOONRZYNKA_SONG = os.path.join(SONGS_FOLDER, "Oda do guunrzynka.mp3")
 SKIBIDI_BAYER_SONG = os.path.join(SONGS_FOLDER, "SKIBIDI BAYER (GRIMACE SHAKE REMIX).mp3")
 
-
 queue = []
 voice_client = None
 is_paused = False
 volume = 0.5
 
 
-total_time_on_channel = 0
-
 @bot.event
 async def on_ready():
     print(f"Bot zalogowany jako {bot.user}")
-    bot.loop.create_task(track_time_on_channel())
-
-async def track_time_on_channel():
-    global total_time_on_channel
-
-    while True:
-        await asyncio.sleep(1)
-
-        if voice_client and voice_client.is_connected():
-            total_time_on_channel += 1  # Dodaj 1 sekundę
-
-            with open("../BrainrotBot/time_spent_on_channel.txt", "w") as f:
-                minutes = total_time_on_channel // 60
-                seconds = total_time_on_channel % 60
-                f.write(f"Sumaryczny czas: {minutes:02}:{seconds:02}")
-
-@bot.command(name="total_time")
-async def total_time_playing(ctx):
-    try:
-        with open("../BrainrotBot/time_spent_on_channel.txt", "r") as f:
-            time_data = f.read()
-        await ctx.send(f"⏱️ {time_data}")
-    except FileNotFoundError:
-        await ctx.send("❌ Nie zarejestrowano jeszcze czasu na kanale.")
 
 async def play_next(ctx):
     global voice_client, queue
-
     if queue:
         item = queue.pop(0)
-
         if os.path.exists(item):
-            source = FFmpegPCMAudio(item, executable="C:\\ffmpeg-2024-11-28-git-bc991ca048-full_build\\bin\\ffmpeg.exe")
+            source = FFmpegPCMAudio(item)  # Render użyje ffmpeg z path
             source = PCMVolumeTransformer(source, volume)  # Ustawianie głośności na źródle audio
             voice_client.play(source, after=lambda e: bot.loop.create_task(after_playing(ctx, e)))
             await ctx.send(f"🎶 Odtwarzam: {os.path.basename(item)}")
@@ -109,7 +80,6 @@ async def volume_control(ctx, vol: float):
 @bot.command(name="play")
 async def play(ctx):
     global voice_client, queue
-
     if ctx.author.voice:
         channel = ctx.author.voice.channel
         voice_client = discord.utils.get(bot.voice_clients, guild=ctx.guild)
@@ -227,22 +197,6 @@ async def oda(ctx):
 async def skibidibayer(ctx):
     await play_song(ctx, SKIBIDI_BAYER_SONG)
 
-
-
-async def play_song(ctx, song_path):
-    global voice_client
-    if voice_client and voice_client.is_playing():
-        voice_client.stop()
-
-    if os.path.exists(song_path):
-        source = FFmpegPCMAudio(song_path, executable="C:\\ffmpeg-2024-11-28-git-bc991ca048-full_build\\bin\\ffmpeg.exe")
-        source = PCMVolumeTransformer(source, volume)  # Ustawianie głośności na źródle audio
-        voice_client.play(source, after=lambda e: bot.loop.create_task(after_playing(ctx, e)))
-        await ctx.send(f"🎶 Odtwarzam: {os.path.basename(song_path)}")
-    else:
-        await ctx.send("❌ Plik nie istnieje.")
-
-
 @bot.command(name="commands")
 async def commands_help(ctx):
     help_message = """
@@ -265,16 +219,13 @@ async def commands_help(ctx):
     """
     await ctx.send(help_message)
 
-
-
-
 async def play_song(ctx, song_path):
     global voice_client, play_start_time
     if voice_client and voice_client.is_playing():
         voice_client.stop()
 
     if os.path.exists(song_path):
-        source = FFmpegPCMAudio(song_path, executable="C:\\ffmpeg-2024-11-28-git-bc991ca048-full_build\\bin\\ffmpeg.exe")
+        source = FFmpegPCMAudio(song_path)
         source = PCMVolumeTransformer(source, volume)
         voice_client.play(source, after=lambda e: bot.loop.create_task(after_playing(ctx, e)))
 
@@ -283,7 +234,5 @@ async def play_song(ctx, song_path):
         await ctx.send(f"🎶 Odtwarzam: {os.path.basename(song_path)}")
     else:
         await ctx.send("❌ Plik nie istnieje.")
-
-
 
 bot.run(TOKEN)
